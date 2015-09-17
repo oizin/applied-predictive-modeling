@@ -48,4 +48,4 @@ dummies <- dummyVars(Class ~ ., data = Soybean.filtered, na.action = na.pass)
 Soybean.filtered <- (predict(dummies, newdata = Soybean))  # dummy variables
 preProcess(Soybean.filtered, method="bagImpute")  # impute missing values using bagged tree method
 
-
+rm(ls = list())
