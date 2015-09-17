@@ -41,5 +41,5 @@ percentVariance <- pcaObject$sd^2/sum(pcaObject$sd^2)*100  # variance each compo
 round(percentVariance, 2)
 round(head(pcaObject$rotation[ ,1:5]),2)  # variable loadings
 
-
+rm(list = ls())  # remove from enviroment
 
