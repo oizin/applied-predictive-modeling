@@ -1,7 +1,7 @@
 ---
 title: "Exercise 18.1 - Measuring predictor importance"
-output: html_document
----
+output: html_document:
+keep_md: true 
 
 The “churn” data set was developed to predict telecom customer churn based on 
 information about their account. It contains 20 variables, with the 19
