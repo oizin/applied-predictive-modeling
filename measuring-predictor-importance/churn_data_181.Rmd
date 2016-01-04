@@ -1,0 +1,47 @@
+---
+title: "Exercise 18.1 - Measuring predictor importance"
+author: "Oisin Fitzgerald"
+output: 
+  html_document:
+    keep_md: true 
+---
+
+The “churn” data set was developed to predict telecom customer churn based on 
+information about their account. It contains 20 variables, with the 19
+predictors including continuous and factor variables that describe an individual
+account. The response churn has two levels "yes" and "no". This script....
+
+(a) Examining the correlation between predictors
+------------------------------------------------
+```{r}
+# load packages
+library(AppliedPredictiveModeling)
+library(C50)
+library(corrplot)
+library(car)
+
+# load data
+data(churn)
+str(churnTrain)
+
+# correlation between the continuous variables the the 
+numeric_vars <- sapply(churnTrain, is.numeric)
+corrs <- cor(churnTrain[numeric_vars])
+corrplot(corrs, method = "number", tl.cex = 0.75)
+```
+
+Finding a perfect colinearity between the of four pairs of total charge and 
+total minutes variables is of course no surprise, phone charges are not random 
+variables! However it is somewhat surprising that there is no linear relation 
+between any other pairs of variables. A scatterplot matrix of a subset of 
+the continuous variables reveals the extent of any pairwise relationship and 
+how certain variables contain large amounts of zeros.
+
+```{r, echo=FALSE}
+pairs(~.,data=churnTrain[numeric_vars][1:4], main="Scatterplot Matrix")
+# make conditional on churn
+```
+
+(b) Assessing the importance of categorical predictors
+-------------------------------------------------------------------------------
+
