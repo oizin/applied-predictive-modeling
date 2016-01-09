@@ -174,8 +174,7 @@ relief_values[order(relief_values, decreasing = TRUE)]
 ```
 
 An addition to the Relief algorithm is to permutate the response observations so as to 
-gain an understanding of the predictors score when it has no relevance. This method, 
-called ReliefF, can be iterated several times giving a somewhat normal distribution of scores that can then be compared to the true Relief score in terms of standard
+gain an understanding of the predictors score when it has no relevance. This method can be iterated several times giving a somewhat normal distribution of scores that can then be compared to the true Relief score in terms of standard
 deviations. This indicates how much greater the Relief score is than what could 
 be expected by chance alone. 
 ```{r}

@@ -269,31 +269,30 @@ relief_values[order(relief_values, decreasing = TRUE)]
 ```
 
 ```
-##              total_day_charge             total_day_minutes 
-##                   0.159747820                   0.159708856 
-## number_customer_service_calls              total_eve_charge 
-##                   0.158000000                   0.090732665 
-##             total_eve_minutes           total_night_minutes 
-##                   0.090660434                   0.063055765 
-##            total_night_charge                     area_code 
-##                   0.062684599                   0.062000000 
-##               voice_mail_plan               total_day_calls 
-##                   0.054000000                   0.050383838 
-##            international_plan             total_intl_charge 
-##                   0.042000000                   0.036790123 
-##            total_intl_minutes         number_vmail_messages 
-##                   0.036333333                   0.027150327 
-##              total_intl_calls             total_night_calls 
-##                   0.023666667                   0.019708920 
-##                         state               total_eve_calls 
-##                   0.010000000                  -0.001764706 
-##                account_length 
-##                  -0.012176309
+##             total_day_minutes              total_day_charge 
+##                    0.23617332                    0.23612810 
+## number_customer_service_calls            international_plan 
+##                    0.12600000                    0.09800000 
+##               voice_mail_plan             total_night_calls 
+##                    0.08800000                    0.08708920 
+##               total_day_calls           total_night_minutes 
+##                    0.06864646                    0.06307872 
+##            total_night_charge             total_eve_minutes 
+##                    0.06298665                    0.05228962 
+##              total_eve_charge         number_vmail_messages 
+##                    0.05226356                    0.04826144 
+##              total_intl_calls            total_intl_minutes 
+##                    0.04333333                    0.04216667 
+##             total_intl_charge                     area_code 
+##                    0.04213580                    0.03600000 
+##                account_length               total_eve_calls 
+##                    0.02119559                    0.01062745 
+##                         state 
+##                    0.00000000
 ```
 
 An addition to the Relief algorithm is to permutate the response observations so as to 
-gain an understanding of the predictors score when it has no relevance. This method, 
-called ReliefF, can be iterated several times giving a somewhat normal distribution of scores that can then be compared to the true Relief score in terms of standard
+gain an understanding of the predictors score when it has no relevance. This method can be iterated several times giving a somewhat normal distribution of scores that can then be compared to the true Relief score in terms of standard
 deviations. This indicates how much greater the Relief score is than what could 
 be expected by chance alone. 
 
@@ -331,26 +330,26 @@ relief_perm$standardized[order(relief_perm$standardized)]
 ```
 
 ```
-##              total_intl_calls               total_eve_calls 
-##                    -1.3817103                    -0.3867892 
-##            total_intl_minutes             total_night_calls 
-##                     0.1200127                     0.1482512 
-##             total_intl_charge                         state 
-##                     0.1502261                     0.2142578 
-##                account_length           total_night_minutes 
-##                     0.2227325                     0.2958105 
-##            total_night_charge                     area_code 
-##                     0.3008955                     0.6927380 
-##               total_day_calls             total_eve_minutes 
-##                     1.0306208                     1.1405252 
-##              total_eve_charge         number_vmail_messages 
-##                     1.1411789                     1.9969366 
-##               voice_mail_plan number_customer_service_calls 
-##                     2.3374189                     2.3601988 
-##            international_plan             total_day_minutes 
-##                     2.7587315                     7.5070864 
-##              total_day_charge 
-##                     7.5079065
+##                     area_code               total_eve_calls 
+##                   -2.17837888                   -1.53075421 
+##                account_length             total_night_calls 
+##                   -0.53966612                   -0.28130565 
+##           total_night_minutes            total_night_charge 
+##                   -0.16435951                   -0.15880347 
+##              total_intl_calls               total_day_calls 
+##                    0.00910222                    0.76098712 
+##              total_eve_charge             total_eve_minutes 
+##                    0.90009256                    0.90072488 
+##                         state            total_intl_minutes 
+##                    1.16465807                    1.42100050 
+##             total_intl_charge         number_vmail_messages 
+##                    1.43765463                    2.44992637 
+##            international_plan              total_day_charge 
+##                    3.26771361                    3.43767734 
+##             total_day_minutes               voice_mail_plan 
+##                    3.43768610                    3.78254810 
+## number_customer_service_calls 
+##                    4.49641650
 ```
 
 
