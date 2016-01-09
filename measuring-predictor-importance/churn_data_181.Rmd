@@ -101,6 +101,7 @@ ggplot(data = res, aes(x = chisq, y = -log(chi.p.value))) +
   labs(title = "Chi square vs. -log(p.values)") +
   xlim(NA, 275) + ylim(NA, 9)
 ```
+
 Receiver operating characteristic (ROC) curves offer a method to examine the extent
 to which a predictor variable distinguishes between the two levels of a response
 factor, e.g. to what extent does the "account_length" variable allow us to 

@@ -146,6 +146,7 @@ ggplot(data = res, aes(x = chisq, y = -log(chi.p.value))) +
 ```
 
 ![](churn_data_181_files/figure-html/unnamed-chunk-4-1.png) 
+
 Receiver operating characteristic (ROC) curves offer a method to examine the extent
 to which a predictor variable distinguishes between the two levels of a response
 factor, e.g. to what extent does the "account_length" variable allow us to 
@@ -268,26 +269,26 @@ relief_values[order(relief_values, decreasing = TRUE)]
 ```
 
 ```
-##             total_day_minutes              total_day_charge 
-##                    0.22143292                    0.22139392 
-## number_customer_service_calls            total_night_charge 
-##                    0.18800000                    0.09831919 
-##           total_night_minutes             total_night_calls 
-##                    0.09818469                    0.08303286 
-##             total_intl_charge            total_intl_minutes 
-##                    0.07882716                    0.07866667 
-##            international_plan               voice_mail_plan 
-##                    0.07400000                    0.06600000 
-##              total_intl_calls             total_eve_minutes 
-##                    0.05766667                    0.04848208 
-##              total_eve_charge               total_day_calls 
-##                    0.04847234                    0.04836364 
-##                     area_code                         state 
-##                    0.04000000                    0.03800000 
-##         number_vmail_messages               total_eve_calls 
-##                    0.03406536                    0.03066667 
+##              total_day_charge             total_day_minutes 
+##                   0.159747820                   0.159708856 
+## number_customer_service_calls              total_eve_charge 
+##                   0.158000000                   0.090732665 
+##             total_eve_minutes           total_night_minutes 
+##                   0.090660434                   0.063055765 
+##            total_night_charge                     area_code 
+##                   0.062684599                   0.062000000 
+##               voice_mail_plan               total_day_calls 
+##                   0.054000000                   0.050383838 
+##            international_plan             total_intl_charge 
+##                   0.042000000                   0.036790123 
+##            total_intl_minutes         number_vmail_messages 
+##                   0.036333333                   0.027150327 
+##              total_intl_calls             total_night_calls 
+##                   0.023666667                   0.019708920 
+##                         state               total_eve_calls 
+##                   0.010000000                  -0.001764706 
 ##                account_length 
-##                    0.02812672
+##                  -0.012176309
 ```
 
 An addition to the Relief algorithm is to permutate the response observations so as to 
@@ -330,26 +331,26 @@ relief_perm$standardized[order(relief_perm$standardized)]
 ```
 
 ```
-##            total_intl_minutes             total_intl_charge 
-##                    -1.2937562                    -1.2821317 
-##                     area_code              total_intl_calls 
-##                    -0.5042796                    -0.4506004 
-##                         state               total_day_calls 
-##                    -0.4283967                     0.1316824 
-##              total_eve_charge             total_eve_minutes 
-##                     0.1846485                     0.1855189 
-##           total_night_minutes            total_night_charge 
-##                     0.3908771                     0.3917792 
-##                account_length             total_night_calls 
-##                     0.4028454                     0.7952273 
-##               total_eve_calls number_customer_service_calls 
-##                     0.8226686                     3.2901295 
-##         number_vmail_messages               voice_mail_plan 
-##                     3.5356765                     5.4117153 
+##              total_intl_calls               total_eve_calls 
+##                    -1.3817103                    -0.3867892 
+##            total_intl_minutes             total_night_calls 
+##                     0.1200127                     0.1482512 
+##             total_intl_charge                         state 
+##                     0.1502261                     0.2142578 
+##                account_length           total_night_minutes 
+##                     0.2227325                     0.2958105 
+##            total_night_charge                     area_code 
+##                     0.3008955                     0.6927380 
+##               total_day_calls             total_eve_minutes 
+##                     1.0306208                     1.1405252 
+##              total_eve_charge         number_vmail_messages 
+##                     1.1411789                     1.9969366 
+##               voice_mail_plan number_customer_service_calls 
+##                     2.3374189                     2.3601988 
 ##            international_plan             total_day_minutes 
-##                     7.7982794                     7.9345573 
+##                     2.7587315                     7.5070864 
 ##              total_day_charge 
-##                     7.9358552
+##                     7.5079065
 ```
 
 
