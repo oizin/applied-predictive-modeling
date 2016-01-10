@@ -1,0 +1,121 @@
+---
+title: 'Ex18.1 Measuring predictor importance: oil data set'
+author: "Oisin Fitzgerald"
+output: 
+  html_document:
+    keep_md: true 
+---
+Assessing varaible importance (and model fitting) may be more difficult with
+a response factor with multiple levels. This script outlines the quantification
+of variable importance in a data set where the response is a factor with seven
+levels. The data set describes the fatty acid composition of seven oil types (e.g.
+pumpkin (A), sunflower (B)....) measured using gas chromatography. More can be 
+found in ?caret::oil.
+
+Four approaches are taken to evaluating predictor importance, answer the following questions:
+
+1. Graphical display of the predictors for each level of the response (boxplots!):
+how well separated do the classes appear?
+2. Analysis of variance: for each predictor is there more variance between rather
+than within the response categories?
+3. Area under the ROC curve: what is the ability of a predictor to separate classes?
+4. ReliefF (incl permutation test): what is the ability of a predictor to separate classes and is this greater than would occur by chance?
+```{r}
+# load data
+library(caret)
+data(oil)
+str(oilType)
+str(fattyAcids)
+
+# load packages
+library(reshape2)
+library(CORElearn)
+library(AppliedPredictiveModeling)
+suppressMessages(library(pROC))
+```
+
+### 1. Boxplots 
+Although not particularly pretty the boxplots does show that 
+oleic and linoleic have the most variation between and within classes.
+```{r}
+summary(fattyAcids)
+# prepare data for boxplots
+df <- data.frame(fattyAcids, oilType)
+df <- melt(df)
+df1 <- df[df$variable %in% c("Linoleic", "Oleic", "Palmitic"), ]
+df2 <- df[!(df$variable %in% c("Linoleic", "Oleic", "Palmitic")), ]
+# for linoleic and oleic
+ggplot(data = df1, aes(y = value, x = oilType)) + 
+  geom_boxplot() +
+    facet_grid(. ~variable)
+# the remaining variables
+ggplot(data = df2, aes(y = value, x = oilType)) + 
+  geom_boxplot() +
+    facet_grid(. ~variable)
+```
+
+### 2. ANOVA
+By modelling the fatty acids as the dependent variables and the oil 
+types as the independent variables (a realistic description of the original
+experiment) we can gain an understanding of likely differences between the means of 
+factor levels for each fatty acid. The results suggest there are differences, although
+an ANOVA won't indicate where the difference lie. Computing pairwise t-tests would
+be required for this, but the amount of numbers to compare in this case is prohibitive compared to other methods.
+```{r}
+anova_res <- function(x, y) {
+  test <- anova(lm(x ~ y))
+  out <- c(F_value = test$`F value`[1], p_value = test$`Pr(>F)`[1])
+  out
+}
+anova_data <- apply(fattyAcids, MARGIN = 2, FUN = anova_res, y = oilType)
+anova_data <- data.frame(t(anova_data))
+anova_data[order(anova_data$F_value, decreasing = TRUE), ]
+
+# method of pairwise comparison
+# pairwise.t.test(x = fattyAcids$Palmitic, g = oilType, pool.sd = FALSE)
+```
+
+### 3. ROC and AUC
+When there are three or more classes, filterVarImp will compute ROC curves
+for each class versus the others and then returns the largest area under the
+curve. In this case, with AUCs of 1, there are clearly some predictors that
+can perfectly separate one class from the rest.
+```{r}
+# AUC results
+auc_res <- filterVarImp(y = oilType, x = fattyAcids)
+```
+
+### 4. ReliefF and Permutation Test
+The ReliefF algorithm takes a random sample of the data and calculates how far each
+observation is from a randomly chosen observation of the same and a different (response) class.
+```{r}
+relief_values <- attrEval(oilType ~ ., data = fattyAcids,
+  estimator = "ReliefFequalK",  # calculation method
+  ReliefIterations = 50)  # num iteration
+relief_values[order(relief_values, decreasing = TRUE)]
+```
+
+A permutation test adds to the ReliefF algorithm by allowing us to observe how the ReliefF score compares to a distribution of scores calculated on permutated data
+(i.e. where no predictor has any *real* relationship to the response)
+```{r}
+relief_perm <- permuteRelief(x = fattyAcids, y = oilType, nperm = 500,
+  estimator = "ReliefFequalK",
+  ReliefIterations = 50)
+# format data for plotting
+relief_values <- data.frame(Predictor = names(relief_values), 
+  value = relief_values, 
+  row.names = NULL)
+# ggplot: facet wrapped histograms of permutations
+ggplot(data = relief_perm$permutations, aes(x = value)) + 
+  geom_histogram(binwidth = .01, colour = 1) +
+  geom_vline(aes(xintercept = value), relief_values, colour = "red", linetype = 2) +
+  facet_wrap(~ Predictor, scales = "free_x") + 
+  labs(title = "Relief Scores and Permutation Distributions", 
+    x = "Relief Scores\n*note free axes")
+```
+
+```{r}
+# Standard deviation of permutated distribution from non-permutated score
+relief_perm$standardized[order(relief_perm$standardized)]
+```
+
