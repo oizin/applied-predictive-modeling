@@ -69,7 +69,7 @@ anova_res <- function(x, y) {
 }
 anova_data <- apply(fattyAcids, MARGIN = 2, FUN = anova_res, y = oilType)
 anova_data <- data.frame(t(anova_data))
-anova_data[order(anova_data$F_value, decreasing = TRUE), ]
+anova_data[order(anova_data$p_value, decreasing = FALSE), ]
 
 # method of pairwise comparison
 # pairwise.t.test(x = fattyAcids$Palmitic, g = oilType, pool.sd = FALSE)
@@ -79,7 +79,8 @@ anova_data[order(anova_data$F_value, decreasing = TRUE), ]
 When there are three or more classes, filterVarImp will compute ROC curves
 for each class versus the others and then returns the largest area under the
 curve. In this case, with AUCs of 1, there are clearly some predictors that
-can perfectly separate one class from the rest.
+can perfectly separate one class from the rest (but we could have guessed this
+looking at the boxplots!).
 ```{r}
 # AUC results
 auc_res <- filterVarImp(y = oilType, x = fattyAcids)

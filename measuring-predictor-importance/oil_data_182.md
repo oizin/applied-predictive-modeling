@@ -129,7 +129,7 @@ anova_res <- function(x, y) {
 }
 anova_data <- apply(fattyAcids, MARGIN = 2, FUN = anova_res, y = oilType)
 anova_data <- data.frame(t(anova_data))
-anova_data[order(anova_data$F_value, decreasing = TRUE), ]
+anova_data[order(anova_data$p_value, decreasing = FALSE), ]
 ```
 
 ```
@@ -152,7 +152,8 @@ anova_data[order(anova_data$F_value, decreasing = TRUE), ]
 When there are three or more classes, filterVarImp will compute ROC curves
 for each class versus the others and then returns the largest area under the
 curve. In this case, with AUCs of 1, there are clearly some predictors that
-can perfectly separate one class from the rest.
+can perfectly separate one class from the rest (but we could have guessed this
+looking at the boxplots!).
 
 ```r
 # AUC results
@@ -171,10 +172,10 @@ relief_values[order(relief_values, decreasing = TRUE)]
 ```
 
 ```
-##   Linoleic    Stearic      Oleic   Palmitic  Linolenic Eicosenoic 
-## 0.62515445 0.57036354 0.49103073 0.43080711 0.24181771 0.05565571 
-## Eicosanoic 
-## 0.05037286
+##   Linoleic    Stearic      Oleic   Palmitic  Linolenic Eicosanoic 
+## 0.63730668 0.54491315 0.52274769 0.43404607 0.24963549 0.10965929 
+## Eicosenoic 
+## 0.08903402
 ```
 
 A permutation test adds to the ReliefF algorithm by allowing us to observe how the ReliefF score compares to a distribution of scores calculated on permutated data
@@ -206,9 +207,9 @@ relief_perm$standardized[order(relief_perm$standardized)]
 ```
 
 ```
-## Eicosanoic Eicosenoic  Linolenic   Palmitic    Stearic      Oleic 
-##   2.959585   5.432462  10.118656  13.029114  17.257939  17.347153 
+## Eicosanoic Eicosenoic  Linolenic   Palmitic      Oleic    Stearic 
+##   2.989642   5.748575   9.965823  12.783484  15.531254  16.228189 
 ##   Linoleic 
-##  17.864658
+##  18.022441
 ```
 
