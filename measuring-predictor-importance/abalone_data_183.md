@@ -59,15 +59,9 @@ library(scales)
 library(corrplot)
 library(CORElearn)
 library(car)
-library(caret)
-```
-
-```
-## Loading required package: lattice
-```
-
-```r
 library(minerva)
+suppressMessages(library(caret))
+suppressMessages(library(pROC))
 ```
 
 ### 1. How do the predictors relate to the number of rings?
@@ -104,16 +98,19 @@ ggplot(aes(x = value, y = Rings), data = gg_data) +
 
 ![](abalone_data_183_files/figure-html/unnamed-chunk-2-1.png) 
 
+
 ```r
 # boxplot for Type variable
 ggplot(aes(x = Type, y = Rings), data = abalone) + 
   geom_boxplot()
 ```
 
-![](abalone_data_183_files/figure-html/unnamed-chunk-2-2.png) 
+![](abalone_data_183_files/figure-html/unnamed-chunk-3-1.png) 
 
 ### 2. How do the predictors relate to each other?
-The car packages amazing function car::scatterplotMatrix
+The car packages amazing function car::scatterplotMatrix shows clear relationships
+between the variables. This further emphasised by the correlation plot. There are
+clearly near linear dependencies in the data.
 
 ```r
 X <- abalone[ , sapply(abalone, is.numeric) ]
@@ -123,25 +120,11 @@ X <- X[ ,-8]  # remove Rings
 scatterplotMatrix(X, smoother = FALSE, reg.line = FALSE)
 ```
 
-![](abalone_data_183_files/figure-html/unnamed-chunk-3-1.png) 
+![](abalone_data_183_files/figure-html/unnamed-chunk-4-1.png) 
 
 ```r
 # LOESS fit
 loess_results <- filterVarImp(x = X, y = abalone$Rings, nonpara = TRUE)
-```
-
-```
-## Loading required package: pROC
-## Type 'citation("pROC")' for a citation.
-## 
-## Attaching package: 'pROC'
-## 
-## The following objects are masked from 'package:stats':
-## 
-##     cov, smooth, var
-```
-
-```r
 loess_results
 ```
 
@@ -162,7 +145,7 @@ XX <- cor(X)
 corrplot(XX, "number", tl.cex = 0.7)
 ```
 
-![](abalone_data_183_files/figure-html/unnamed-chunk-3-2.png) 
+![](abalone_data_183_files/figure-html/unnamed-chunk-4-2.png) 
 
 ### 3. Predictor importance scores
 A downside of all the measure used in this section is that they soley reveal bivariate
@@ -287,10 +270,10 @@ relief_perm$standardized[order(relief_perm$standardized)]
 ```
 
 ```
-##  LongestShell      Diameter ShuckedWeight   WholeWeight VisceraWeight 
-##      7.739736      8.181680      8.212930     10.758419     12.407788 
+## ShuckedWeight   WholeWeight VisceraWeight  LongestShell      Diameter 
+##      3.929672      5.283250      5.732581      5.795141      6.438950 
 ##   ShellWeight        Height 
-##     12.870966     17.491489
+##      9.404226     13.175797
 ```
 
 ### 4. Filters redundant predictors and create a set of non-redundant Principal component analysis

@@ -28,8 +28,9 @@ library(scales)
 library(corrplot)
 library(CORElearn)
 library(car)
-library(caret)
 library(minerva)
+suppressMessages(library(caret))
+suppressMessages(library(pROC))
 ```
 
 ### 1. How do the predictors relate to the number of rings?
@@ -42,7 +43,7 @@ relationships between the various weight and length variables. Height shows two
 outlying points with values about 4 to 10 times greater than normal, suggesting
 they may be incorrectly entered values. The boxplots show an expected pattern, 
 with infants having less rings than adults.
-```{r}
+```{r, fig.width = 10, fig.height = 10}
 # format data for plotting
 gg_data <- gather(abalone, Rings)
 names(gg_data) <- c("Rings", "variable", "value")
@@ -53,13 +54,18 @@ ggplot(aes(x = value, y = Rings), data = gg_data) +
   geom_point() +
   facet_wrap(~variable, scales = "free_x") +
   scale_x_continuous(breaks = pretty_breaks(n = 8)) 
+```
+
+```{r}
 # boxplot for Type variable
 ggplot(aes(x = Type, y = Rings), data = abalone) + 
   geom_boxplot()
 ```
 
 ### 2. How do the predictors relate to each other?
-The car packages amazing function car::scatterplotMatrix
+The car packages amazing function car::scatterplotMatrix shows clear relationships
+between the variables. This further emphasised by the correlation plot. There are
+clearly near linear dependencies in the data.
 ```{r, fig.width = 10, fig.height = 10}
 X <- abalone[ , sapply(abalone, is.numeric) ]
 X <- X[ ,-8]  # remove Rings
