@@ -1,0 +1,183 @@
+---
+title: "Ex 18.3 Measuring predictor importance: abalone data set"
+author: "Oisin Fitzgerald"
+output: 
+  html_document:
+    keep_md: true 
+---
+The UCI Abalone data (http://archive.ics.uci.edu/ml/datasets/Abalone)
+consist of data from 4,177 abalones (sea snails). The data contain measurements 
+of the type (male, female, and infant), the longest shell measurement, the diameter,
+height, and several weights (whole, shucked, viscera, and shell). The outcome
+is the number of rings.
+This script:
+1. Visualises how the predictors relate to the reponse 
+2. Visualises how the predictors relate to each other
+3. Evaluates predictor importance based on several methods
+4. Filters redundant predictors and uses PCA to create a set of orthogonal predictors
+
+```{r}
+library(AppliedPredictiveModeling)
+data(abalone)
+str(abalone)
+head(abalone)
+
+library(ggplot2)
+library(tidyr)
+library(scales)
+library(corrplot)
+library(CORElearn)
+library(car)
+library(caret)
+library(minerva)
+```
+
+### 1. How do the predictors relate to the number of rings?
+Visually displaying the data shows some clear relationships and also outlying
+values. In the plots of rings vs. the continouos variables there are both linear
+(e.g. diameter) and non-linear (e.g. the weight variables) patterns. The similar 
+shapes of some of the point clouds are suggestive that some of the variables likely 
+contain the same information. Of course this makes sense given likely strong 
+relationships between the various weight and length variables. Height shows two 
+outlying points with values about 4 to 10 times greater than normal, suggesting
+they may be incorrectly entered values. The boxplots show an expected pattern, 
+with infants having less rings than adults.
+```{r}
+# format data for plotting
+gg_data <- gather(abalone, Rings)
+names(gg_data) <- c("Rings", "variable", "value")
+gg_data <- subset(gg_data, gg_data$variable != "Type")
+gg_data$value <- as.numeric(gg_data$value)
+# scatter plots for continuous variables
+ggplot(aes(x = value, y = Rings), data = gg_data) + 
+  geom_point() +
+  facet_wrap(~variable, scales = "free_x") +
+  scale_x_continuous(breaks = pretty_breaks(n = 8)) 
+# boxplot for Type variable
+ggplot(aes(x = Type, y = Rings), data = abalone) + 
+  geom_boxplot()
+```
+
+### 2. How do the predictors relate to each other?
+The car packages amazing function car::scatterplotMatrix
+```{r, fig.width = 10, fig.height = 10}
+X <- abalone[ , sapply(abalone, is.numeric) ]
+X <- X[ ,-8]  # remove Rings
+
+# matrix scatter plots
+scatterplotMatrix(X, smoother = FALSE, reg.line = FALSE)
+
+# LOESS fit
+loess_results <- filterVarImp(x = X, y = abalone$Rings, nonpara = TRUE)
+loess_results
+
+# correlations
+XX <- cor(X)
+corrplot(XX, "number", tl.cex = 0.7)
+```
+
+### 3. Predictor importance scores
+A downside of all the measure used in this section is that they soley reveal bivariate
+relationships. We cannot know for example if ther interaction of two predictors is 
+an important term to include in any model. Regardless the various measures of linear, 
+rank, and information provide a useful to gauge the likely importance of a variable in
+improving the predictive ability of a model (i.e. screening!). 
+Pearson's *r* provides a measure of the linear relationships between two variables
+while Spearman's *rho* is the rank correlation between the variable and so is better
+suited to picking up non-linear relationships. All variable have a greater Spearman's
+*rho* than Pearson's *r* suggesting future model sshould take into account this non-linearity.
+The ANOVA and pariwise t-tests confirm what the boxplot showed: that infants are 
+most different from the other groups in number of rings.
+```{r}
+# linear correlations
+pearsonsR <- apply(X, MARGIN = 2, FUN = cor, y = abalone$Rings, method = "pearson")
+pearsonsR
+
+# rank correlations
+spearmansRho <- apply(X, MARGIN = 2, FUN = cor, y = abalone$Rings, method = "spearman")
+spearmansRho
+
+# ANOVA and t tests (Type variable)
+anova(lm(Rings ~ Type, data = abalone)) 
+pairwise.t.test(abalone$Rings, abalone$Type, pool.sd = FALSE)
+```
+
+The maximal information coefficient (MIC) is an information theory based measure
+of the strength of linear and/or non-linear relationship between two variables. It
+bins continuous variables in such a way as to maximise the mutual information, the
+amount of information you gain about the likely value of one variable given the 
+value of another. The results suggest that all variables are moderately related to 
+thee number fo rings. MIC minus R^2 is suggested as a measure of the degree of 
+non-linearity in the relationship, all values of this measure are close to zero 
+implying non-linear relationships.
+```{r}
+# MIC
+mic_values <- mine(x = X, y = abalone$Rings)
+mic_values$MIC
+```
+
+The RReliefF algorithm is an adaption of ReliefF to a regression setting 
+(Robnik-Šikonja & Kononenko, 1997). It is a measure of how likely nearby instances
+of randomly selected observations are to give a similar prediction in the response.
+It can be combined with a permutation test to give an indication of how much the
+results differ from chance.
+```{r}
+#RreliefF (optimistic!!)
+relief_values <- attrEval(abalone$Rings ~ ., data = X,
+  estimator = "RReliefFbestK",  # calculation method
+  ReliefIterations = 50)  # num iteration
+relief_values <- data.frame(Predictor = names(relief_values), 
+  value = relief_values, 
+  row.names = NULL)
+
+# RreliefF permutation test
+relief_perm <- permuteRelief(x = X, y = abalone$Rings, nperm = 500,
+  estimator = "RReliefFbestK",
+  ReliefIterations = 50)
+
+# standard deviations from permutation score distribution
+relief_perm$standardized[order(relief_perm$standardized)]
+```
+
+### 4. Filters redundant predictors and create a set of non-redundant Principal component analysis
+Given the relationships between the variables this function filters out highly
+correlated variable leaving a reduced set. It follows a heuristic algorithm in 
+Kuhn and Johnson's book in removing from a pair that variable most related to the
+other variables. PCA is then performed, with the first two principal components
+accounting for 90% of the variance. The filter method at *r* = 0.75 also leads to
+the conclusion there are only two non-redundant "pieces of information" in this data set.
+```{r}
+# Filter predictors
+# returns name of predictors to keep, possibly still highly correlated if only
+# two, in this case examine how they relate to the response in making decisions
+filter_vars <- function(X, cor_level = 0.75,...) {
+  XX <- cor(X)
+  XX <- XX - diag(diag(XX))
+  while (any(XX > cor_level)) {
+        if (ncol(XX) <= 2) { # prevent entering filtering loop
+          return(colnames(XX))
+    } else {
+      var_ind <- which(XX == max(XX), arr.ind = TRUE)
+      var.1 <- row.names(var_ind)[1]
+      var.2 <- row.names(var_ind)[2]
+      var.1_av <- sum(XX[var.1, ])/(length(XX[var.1, ]) - 1)
+      var.2_av <- sum(XX[var.2, ])/(length(XX[var.2, ]) - 1)
+      if (var.1_av > var.2_av) {
+        XX <- XX[!(row.names(XX) == var.1),!(colnames(XX) == var.1)]
+        } else {
+          XX <- XX[!(row.names(XX) == var.2),!(colnames(XX) == var.2)]
+        }
+    }
+  }
+  colnames(XX)
+}
+
+filter_vars(X)  # works...
+
+# PCA
+pca_object <- prcomp(X, center = TRUE, scale. = TRUE)
+percent_variance <- pca_object$sd^2/sum(pca_object$sd^2)*100
+percent_variance # in agreement with filtering method that there are really 
+```
+
+
