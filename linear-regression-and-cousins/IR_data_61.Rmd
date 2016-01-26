@@ -24,14 +24,13 @@ the same food sample is measured at many IR wavelengths?
 
 ```{r}
 # load data and packages
-library(caret)
 library(car)
-library(corrplot)
-library(elasticnet)
 library(lars)
 library(broom)
 library(reshape2)
-library(pls)
+suppressMessages(library(elasticnet))
+suppressMessages(library(pls))
+suppressMessages(library(caret))
 
 data(tecator) # from caret
 ```
@@ -58,8 +57,8 @@ ggplot(data = data.frame(absorp)) +
 ### 2. Create a training/test split
 
 * 75% of the data to the training set
-* As the predictors were positively skewed the Yeo-Johnson transformation procedure 
-was carried out. The lambda of transformation was approximately -1 for all predictors.
+* The predictor variables show positive skew which Yeo-Johnson estimated lambda
+(of -1 i.e. reciprocal) altered
 
 ```{r}
 length(endpoints[ ,1])  # how many observations?
@@ -74,12 +73,12 @@ train_resp <- endpoints[data_split, 2]  # column 2 is fat content
 test_resp <- endpoints[-data_split, 2]
 
 # de-skew variables
-proc_object <- preProcess(training, 
-  method = c("center", "scale", "YeoJohnson"))
-training <- predict(proc_object, training)
 training <- data.frame(training)
-test <- predict(proc_object, test)
 test <- data.frame(test)
+proc_object <- preProcess(training, 
+  method = c("YeoJohnson", "center", "scale"))
+training <- predict(proc_object, training)
+test <- predict(proc_object, test)
 ```
 
 ### 3. Model fitting
@@ -108,7 +107,7 @@ ctrl <- trainControl(method = "cv", number = 5, repeats = 5)
 # Linear regression
 mc <- findCorrelation(training, cutoff = 0.95)
 training_linear <- data.frame(training[ ,-mc])
-colnames(training_linear) <- "X1"
+# colnames(training_linear) <- "X1"
 linear_model <- train(y = train_resp,
   x = training_linear,
   method = "lm",
