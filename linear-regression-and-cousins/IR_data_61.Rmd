@@ -1,0 +1,302 @@
+---
+title: "Ex6.1 - Linear regression: IR spectrum of food"
+author: "Oisin Fitzgerald"
+date: "26 January 2016"
+output: 
+  html_document:
+    keep_md: true 
+---
+### The data:
+The data provides an infrared (IR) profile and analytical chemistry determined 
+percent content of water, fat, and protein for meat samples. If there can be establish 
+a predictive relationship between IR spectrum and fat content, then food scientists 
+could predict a sample’s fat content with IR instead of using analytical chemistry
+
+### Outline:
+1. What is the relationship between the predictors? Are they highly correlated given 
+the same food sample is measured at many IR wavelengths?
+2. Create training/test split
+3. Fit different models
+  + Linear regression
+  + Ridge regression, lasso and elastic net
+  + PCR and PLS
+4. Compare models predictive ability
+
+```{r}
+# load data and packages
+library(caret)
+library(car)
+library(corrplot)
+library(elasticnet)
+library(lars)
+library(broom)
+library(reshape2)
+library(pls)
+
+data(tecator) # from caret
+```
+
+### 1. Relationship between predictors and distributions 
+
+```{r}
+# correlation
+XX <- cor(absorp)
+XX[1:5, 1:5]  # everything is related to everything!
+
+# PCA
+pca_object <- prcomp(absorp)
+percent_variance <- pca_object$sdev^2/sum(pca_object$sd^2)*100
+head(percent_variance)
+
+# Predictor distributions
+ggplot(data = data.frame(absorp)) + 
+  geom_histogram(aes(x = X1), bins = 20, col = 1) +
+  labs(title = "Histogram of IR wavelength no. 1",
+    x = "Wavelength predictor 1")  # positive skew
+```
+
+### 2. Create a training/test split
+
+* 75% of the data to the training set
+* As the predictors were positively skewed the Yeo-Johnson transformation procedure 
+was carried out. The lambda of transformation was approximately -1 for all predictors.
+
+```{r}
+length(endpoints[ ,1])  # how many observations?
+# create partition index
+data_split <- createDataPartition(endpoints[ ,1], p = .75)
+data_split <- data_split$Resample1
+
+# split data
+training <- absorp[data_split, ]
+test <- absorp[-data_split, ]
+train_resp <- endpoints[data_split, 2]  # column 2 is fat content
+test_resp <- endpoints[-data_split, 2]
+
+# de-skew variables
+proc_object <- preProcess(training, 
+  method = c("center", "scale", "YeoJohnson"))
+training <- predict(proc_object, training)
+training <- data.frame(training)
+test <- predict(proc_object, test)
+test <- data.frame(test)
+```
+
+### 3. Model fitting
+* Linear regression  
+    + Unsurprisingly prior removing of highly correlated predictors resulted in a model
+    with only one independent variable. The performance on cross-validation was poor.
+* Ridge regression
+    + The ridge model quickly highlighted the ability to improve on the linear regression
+    model. However, subsequent fitting of a lasso model showed that an ability to drive
+    the coefficients to zero was an advantage in the highly correlated predictor environment.
+* The lasso and elastic net
+    + As noted the lasso model outperformed the ridge model. The optimal solution resulted
+    in a large number of the coefficient being shrunk to zero
+    + Enet performed similar to the lasso, with the best performing model having a
+    low lambda for the ridge function  
+* Principal components and partial least squares regression
+    + These both performed quite well. The similarity of the PCR model to the PLS
+    models is likely related to the variance in the predictors (IR response) very much 
+    being a consequence of the variance in the response (food fat content), thus the 
+    unsupervised nature of PCA causing little detriment.
+    + The number of principal components was tuned rather than using the first two,
+    or fist few that explained 90% of variance etc.
+
+```{r}
+ctrl <- trainControl(method = "cv", number = 5, repeats = 5)
+# Linear regression
+mc <- findCorrelation(training, cutoff = 0.95)
+training_linear <- data.frame(training[ ,-mc])
+colnames(training_linear) <- "X1"
+linear_model <- train(y = train_resp,
+  x = training_linear,
+  method = "lm",
+  trControl = ctrl)
+linear_model
+
+# Ridge Regression - penalise square of coefficient
+ridge_model <- train(y = train_resp,
+  x = training,
+  method = "ridge",
+  trControl = ctrl,
+  tuneLength = 10)
+ridge_model
+plot(ridge_model)
+
+# Lasso - penalise absolute value of coeffienct
+lasso_grid <- expand.grid(.fraction = seq(0.001, 0.1, 0.01))
+lasso_model <- train(y = train_resp,
+  x = training,
+  method = "lasso",
+  trControl = ctrl,
+  tuneGrid = lasso_grid)
+lasso_model
+plot(lasso_model)
+
+# Elastic Net - combination of ridge and lasso
+enet_grid <- expand.grid(.fraction = seq(0.001, 0.1, 0.01), .lambda = c(0, 0.0001, 0.001, 0.01))
+enet_model <- train(y = train_resp,
+  x = training,
+  method = "enet",
+  trControl = ctrl,
+  tuneGrid = enet_grid)
+enet_model
+plot(enet_model)
+
+# PCR - 
+pcr_results <- list(results = data.frame(RMSE = NA, RMSE_sd = NA), final = NA)
+for (i in 1:20) {
+  # fit model
+  train_data <- princomp(training)$scores[ ,1:i]
+  train_data <- data.frame(train_data)
+  pcr_model <- train(y = train_resp,
+  x = train_data,
+  method = "lm",
+  trControl = ctrl)
+  
+  # extract results
+  pcr_results$results[i, 1] <- pcr_model$results$RMSE
+  pcr_results$results[i, 2] <- pcr_model$results$RMSESD
+  
+  # extract model
+  if (all(pcr_model$results$RMSE <= pcr_results$results$RMSE)) {
+    pcr_results$final <- pcr_model
+    }
+}
+pcr_results
+
+
+# PLS
+pls_grid <- expand.grid(.ncomp = seq(10, 20, 1))
+pls_model <- train(y = train_resp,
+  x = training,
+  method = "pls",
+  trControl = ctrl,
+  preProcess = c("center", "scale"),
+  tuneGrid = pls_grid)
+pls_model
+```
+
+### 4. Compare performance on test set
+* The results from fitting on the test set followed from the cross-validation 
+included in model fitting. Linear regression did very poorly with ridge regression 
+slightly worse off than the group of lasso, elastic net, PCR and PLS. 
+* In context the RMSE and correlation between predicted and observed results are 
+superb, and surely suggest that any of these models could be used in measuring the
+fat content of food using infrared.
+* Given the similarities in the model performances I was interested in constructing
+confidence intervals around the RMSE. A function to calculate bootstrap 
+estimation and its results are shown below.
+
+```{r}
+# Linear regression
+test_linear <- data.frame(test[ ,-mc])
+colnames(test_linear) <- colnames(training_linear)
+linear_pred <- predict(linear_model, test_linear)
+ggplot() + geom_point(aes(x = linear_pred, y = test_resp))
+
+n <- length(test_resp)
+RMSE_lm <- sqrt(sum((test_resp - linear_pred)^2)/n); RMSE_lm
+
+# Ridge regression
+ridge_preds <- predict(ridge_model, test)
+ggplot() + geom_point(aes(x = ridge_preds, y = test_resp))
+
+RMSE_ridge <- sqrt(sum((test_resp - ridge_preds)^2)/n); RMSE_ridge
+
+# Lasso
+lasso_preds <- predict(lasso_model, test)
+ggplot() + geom_point(aes(x = lasso_preds, y = test_resp))
+
+RMSE_lasso <- sqrt(sum((test_resp - lasso_preds)^2)/n); RMSE_lasso
+
+# Elastic net
+enet_preds <- predict(enet_model, test)
+ggplot() + geom_point(aes(x = enet_preds, y = test_resp))
+
+RMSE_enet <- sqrt(sum((test_resp - enet_preds)^2)/n); RMSE_enet
+
+# PCR
+pca_train <- princomp(training)
+test_pcs <- predict(pca_train, test)
+pcr_preds <- predict(pcr_results$final, test_pcs)
+ggplot() + geom_point(aes(x = pcr_preds, y = test_resp))
+
+RMSE_pcr <- sqrt(sum((test_resp - pcr_preds)^2)/n); RMSE_pcr
+
+# PLS
+pls_preds <- predict(pls_model, test)
+ggplot() + geom_point(aes(x = pls_preds, y = test_resp))
+
+RMSE_pls <- sqrt(sum((test_resp - pls_preds)^2)/n); RMSE_pls
+cor(pls_preds, test_resp)
+```
+
+### 4. Compare performance on test set contd. 
+* Bootstrap estimate of RMSE confidence interval
+    + PLS appears to be the prefered model, it shows the least variation in its RMSE scores
+    across the bootstrap samples. PCR is likely similar, an issue with variable naming meant
+    I excluded it.
+
+```{r}
+boostrap_RMSE <- function(model, data, obs, trials = 1000, CI = 0.95) {
+  
+  n <- nrow(data)
+  out <- list(results = data.frame(RMSE = NA), lower = NA, upper = NA)
+  
+  for (i in 1:trials) {
+    # create bootstrap sample
+    samp <- sample(n, size = n, replace = TRUE)
+    boot_obs <- obs[samp]
+    boot_data <- data.frame(data[samp, ])
+    colnames(boot_data) <- colnames(data)
+    # predict
+    preds <- predict(model, newdata = boot_data)
+    RMSE <- sqrt(sum((boot_obs - preds)^2)/n)
+    
+    out$results[i ,1] <- RMSE
+  }
+  
+  temp <- out$results$RMSE
+  temp <- quantile(temp, probs = c(0.025, 0.975), na.rm = TRUE)
+  
+  out$lower <- temp[1]
+  out$upper <- temp[2]
+  
+  out
+}
+```
+
+
+```{r}
+# The bootstrap results
+bRMSE_lm <- boostrap_RMSE(linear_model, test_linear, test_resp)
+bRMSE_ridge <- boostrap_RMSE(ridge_model, test, test_resp)
+bRMSE_lasso <- boostrap_RMSE(lasso_model, test, test_resp)
+bRMSE_enet <- boostrap_RMSE(enet_model, test, test_resp)
+# bRMSE_pcr <- boostrap_RMSE(pcr_model, test, test_resp)
+bRMSE_pls <- boostrap_RMSE(pls_model, test, test_resp)
+
+model_results <- data.frame(bRMSE_lm$results, bRMSE_ridge$results,
+  bRMSE_lasso$results, bRMSE_enet$results, bRMSE_pls$results)
+colnames(model_results) <- c('lm', 'ridge', 'lasso', 'enet', 'pls')
+
+temp <- melt(model_results)
+
+ggplot(data = temp, aes(x = variable, y = value)) + 
+  geom_boxplot(width = 0.5) + 
+  theme_bw() + 
+  labs(title = 'Bootstrap Estimates of Model Performance',
+    x = 'Model',
+    y = 'RMSE')
+```
+
+### Conclusion
+
+* The clear signal in the data meant that despite multicollinarity issues several 
+linear model fitting methods had no problem producing extremely predictive models. 
+* The predictors were highly correlated and likely possessed variations on same 
+information. Therefore possibly as a result of their ability to extract the minimal 
+dimension signal from several correlated variables PCR and PLS appear to have a slight 
+performance advantage over other models.
