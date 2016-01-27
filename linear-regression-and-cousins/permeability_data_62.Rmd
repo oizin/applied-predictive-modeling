@@ -1,0 +1,222 @@
+---
+title: 'Ex6.2 - Linear regression: molecule permeability'
+author: "Oisin Fitzgerald"
+date: "27 January 2016"
+output: 
+  html_document:
+    keep_md: true 
+---
+
+### The data 
+
+This pharmaceutical data set was used to develop a model for predicting compounds' 
+permeability, a measure of a molecule's ability to cross a membrane. Permeability
+impacts on a potential drug's usefulness, i.e. it needs to be able to cross
+certain membranes to be effective. There exist assays to measure a compund's
+permeability. The gaol here is to develop a predictive model for permeability 
+in an attempt to potentially reduce the need for the assay. 
+(brief description, more on ?permeability)
+
+### Outline
+
+* Training/test split
+* Pre-process the data
+    + Skewness of response
+    + Sparseness
+* Fit and test PLS models
+* Fit and ridge regression, LASSO and elastic net models
+
+```{r}
+# Load data and packages
+library(AppliedPredictiveModeling)
+data(permeability)
+
+suppressMessages(library(caret))
+suppressMessages(library(pls))
+suppressMessages(library(elasticnet))
+suppressMessages(library(lars))
+```
+
+### Data splitting and pre-processing
+
+```{r}
+fingerprints <- data.frame(fingerprints)
+permeability <- as.vector(permeability)
+# Create training/test split index
+Split <- createDataPartition(permeability, times = 1, p = 0.75)
+Split <- Split$Resample1 
+# Create training and test splits
+training <- fingerprints[Split, ]
+test <- fingerprints[-Split, ]
+response_train <- permeability[Split]
+response_test <- permeability[-Split]
+
+# Pre-processing
+training_filter <- training[ ,-nearZeroVar(training, freqCut = 95/5)]  # near zero variances
+# binary data...
+
+# positively skewed
+ggplot() + geom_histogram(aes(x = permeability), binwidth = 4, col = 1) + 
+  labs(title = "Histogram of permeability", x = "Molecule permeability") +
+  theme_bw()
+preProcess(data.frame(permeability), method = c("YeoJohnson"))
+```
+
+### Fit and test partial least squares models
+
+Three variations on a PLS model were fit and tested:
+1. A model fit to the full training set
+2. A model fit to the near zero variance reduced training set
+3. A model fit to a log transformed response
+
+None of the models created appear to have the predictive ability to replace the 
+mentioned assay method, they lack accurate predictive ability. The log(response)
+PLS model (and others) appears to shown promise within a certain range. Possibly 
+the current linear technique is too restrictive. Some models are producing negative 
+predictions - multicolinearity?. 
+
+```{r}
+# Fit PLS models
+ctrl = trainControl("repeatedcv", number = 5, repeats = 5)
+pls_model.1 <- train(y = response_train,
+  x = training,
+  method = "pls",
+  metric = "Rsquared",
+  tuneLength = 10,
+  trControl = ctrl)
+pls_model.1
+
+pls_model.2 <- train(y = response_train,
+  x = training_filter,
+  method = "pls",
+  metric = "Rsquared",
+  tuneLength = 10,
+  trControl = ctrl)
+pls_model.2
+
+pls_model.3 <- train(y = log(response_train),
+  x = training,
+  method = "pls",
+  metric = "Rsquared",
+  tuneLength = 10,
+  trControl = ctrl)
+pls_model.3
+
+# post hoc: remove multicollinearity and refit
+remove <- findLinearCombos(training_filter)
+training_filter2 <- training_filter[ ,remove$remove]
+
+pls_model.4 <- train(y = response_train,
+  x = training_filter2,
+  method = "pls",
+  metric = "Rsquared",
+  tuneLength = 10,
+  trControl = ctrl)
+pls_model.4
+
+
+# Predict on test data
+pls1_preds <- predict(pls_model.1, test)
+RMSE(pls1_preds, response_test)
+cor(pls1_preds, response_test)^2  # Rsquared
+ggplot() + 
+  geom_point(aes(x = pls1_preds, y = response_test)) + 
+  theme_bw() +
+  labs(title = "PLS model 1 predictions vs. observed", 
+    x = "predicted permeability", 
+    y = "observed permeability")
+
+pls2_preds <- predict(pls_model.2, test)
+RMSE(pls2_preds, response_test)
+cor(pls2_preds, response_test)^2  # Rsquared
+ggplot() + 
+  geom_point(aes(x = pls2_preds, y = response_test)) + 
+  theme_bw() +
+  labs(title = "PLS model 2 predictions vs. observed", 
+    x = "predicted permeability", 
+    y = "observed permeability")
+
+pls3_preds <- predict(pls_model.3, test)
+RMSE(exp(pls3_preds), response_test)
+cor(exp(pls3_preds), response_test)^2  # Rsquared
+ggplot() + 
+  geom_point(aes(x = pls3_preds, y = response_test)) + 
+  theme_bw() +
+  labs(title = "PLS model 3 predictions vs. observed", 
+    x = "predicted permeability", 
+    y = "observed permeability")
+# can it predict well within a certain range??
+RMSE(exp(pls3_preds[response_test<20]), response_test[response_test<20])
+
+pls4_preds <- predict(pls_model.4, test)
+RMSE(pls4_preds, response_test)
+cor(pls4_preds, response_test)^2  # Rsquared
+ggplot() + 
+  geom_point(aes(x = pls4_preds, y = response_test)) + 
+  theme_bw() +
+  labs(title = "PLS model 4 predictions vs. observed", 
+    x = "predicted permeability", 
+    y = "observed permeability")
+
+```
+
+#### Fit and ridge regression, LASSO and elastic net models
+
+As with the PLS models, none of the models were stong predictors of the data, suggesting
+that laboratory methods of measuring permeability are prefereable (at least) to the
+models fitted. The PLS models actually outperformed the shrinkage methods. Further the 
+cross validated estimates of RMSE and R2 were quite inaccurate compared to the test fits. 
+There appears to be residual instability in the cofficients even in these shrinkage methods, 
+with enet and ridge producing hugely negative predictions and RMSE before being tuned 
+over a predefined range of shrinkage coefficients. 
+
+```{r}
+# Fit shrinkage models
+ctrl <- trainControl("cv", number = 5)
+
+ridge_grid <- expand.grid(.lambda = seq(0.05, 0.2, 0.01))
+ridge_model <- train(y = response_train, 
+  x = training_filter2,  # model fitting impacted by zero variance
+  method = "ridge",
+  tuneGrid = ridge_grid,
+  metric = "RMSE",
+  trControl = ctrl)
+ridge_model
+# remaining instability in the coefficients?
+plot(ridge_model$finalModel)
+title(main = "Ridge regression coefficient stability")  
+
+lasso_model <- train(y = response_train, 
+  x = training_filter2,  
+  method = "lasso",
+  tuneLength = 10,
+  metric = "RMSE",
+  trControl = ctrl)
+lasso_model
+
+enet_grid <- expand.grid(.lambda = c(0.01, 0.02, 0.03, 0.05), .fraction = c(seq(0.00001, 0.2, 0.02)))
+enet_model <- train(y = response_train, 
+  x = training_filter,
+  method = "enet",
+  tuneGrid = enet_grid,
+  metric = "RMSE",
+  trControl = ctrl)
+enet_model
+
+
+# Test shrinkage models
+ridge_preds <- predict(ridge_model, test)
+RMSE(ridge_preds, response_test)
+cor(ridge_preds, response_test)^2
+
+lasso_preds <- predict(lasso_model, test)
+RMSE(lasso_preds, response_test)
+cor(lasso_preds, response_test)^2
+
+enet_preds <- predict(enet_model, test)
+RMSE(enet_preds, response_test)
+cor(enet_preds, response_test)^2
+```
+
+
+
