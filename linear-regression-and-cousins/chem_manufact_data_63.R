@@ -2,7 +2,7 @@
 #
 # Script based on Ex 6.3 of Applied Predictive Modeling (Kuhn & Johnson, 2013)
 # Exercise covers on data pre-processing, train/test splitting, missing value 
-# imputation and model fitting
+# imputation, model fitting and assessing variable importance scores
 #
 # Notes:
 #
@@ -40,7 +40,7 @@ training <- predict(preproc_1, training)
 test <- predict(preproc_1, test)
 
 XX <- cor(train)
-corrplot(XX, tl.cex = 0.3)  # some strong correltions
+corrplot(XX, tl.cex = 0.3)  # some strong correlations
 rk(XX)  # rank less than num vars; linear combinations
 remove <- findLinearCombos(XX)
 training <- training[ ,-remove$remove]
@@ -48,8 +48,8 @@ test <- test[ ,-remove$remove]
 
 # what columns should be removed to reduce the correlations?
 remove <- findCorrelation(XX, cutoff = .90) 
-training <- training[ ,-remove$remove]
-test <- test[ ,-remove$remove]
+training_filter <- training[ ,-remove]
+test_filter <- test[ ,-remove]
 
 # Transform data - estimate lambda with Yeo Johnson
 preproc_3 <- preProcess(training, method = "YeoJohnson")
@@ -63,7 +63,7 @@ hist(resp_train, xlab = "% yield", main = "Histogram of % yield")
 ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
 
 # 1. A linear regression model -------------------------------------------------
-linear_model <- train(y = resp_train, x = training,
+linear_model <- train(y = resp_train, x = training_filter,
   method = "lm",
   trControl = ctrl)
 linear_model
@@ -140,7 +140,7 @@ plot(enet_model)
 
 # Make predictions ============================================================
 # 1. linear regression model
-lm_preds <- predict(linear_model, test)
+lm_preds <- predict(linear_model, test_filter)
 RMSE(lm_preds, resp_test)
 plot(lm_preds, resp_test, xlab = "prediction", ylab = "observed", pch = 20,
   main = "Linear Regression: RMSE = 1.172")
@@ -157,7 +157,7 @@ abline(a = 0, b = 1, col = 2, lty = 2)
 
 # 3. PLS model 
 pls_preds <- predict(pls_model, test)
-RMSE(pls_preds, resp_test)
+RMSE(pls_preds, resp_test, na.rm = TRUE)
 plot(pls_preds, resp_test, xlab = "prediction", ylab = "observed", 
   pch = 20, main = "Partial Least Squares: RMSE = 1.079")
 abline(a = 0, b = 1, col = 2, lty = 2)
@@ -203,3 +203,6 @@ lines(loess.smooth(training$ManufacturingProcess36, resp_train), col = 2)
 plot(training$ManufacturingProcess36, resp_train, pch = 20, 
   xlab = "ManufacturingProcess36", ylab = "% yield")
 lines(loess.smooth(training$ManufacturingProcess36, resp_train), col = 2)
+
+# The variable importance scores reveal several relationships worth examining in 
+# any experiments aimed at improving the manufacturing process.
