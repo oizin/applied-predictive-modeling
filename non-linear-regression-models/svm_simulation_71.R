@@ -18,6 +18,7 @@
 #
 # Packages ====================================================================
 library(kernlab)
+library(RColorBrewer)
 
 # Simulate the data ===========================================================
 set.seed(100)
@@ -30,85 +31,66 @@ plot(x, y)
 data_grid <- data.frame(x = seq(2, 10, length = 100))
 
 # Fit different models using a radial basis function and different values of ===
-# the cost (the C parameter).
-radial_SVM.1 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = "automatic",
-  C = 1, epsilon = 0.01)
-model_preds.1 <- predict(radial_SVM.1, newdata = data_grid)
-# very jagged line, over-fits the data
-points(x = data_grid$x, y = model_preds.1[,1], type = "l", col = "blue")
+# the cost (the C parameter)
 
-radial_SVM.2 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = "automatic",
-  C = 1, epsilon = 0.1)
-model_preds.2 <- predict(radial_SVM.2, newdata = data_grid)
-# somewhat smoother fit but still not exactly sin wave
-points(x = data_grid$x, y = model_preds.2[,1], type = "l", col = "red")
+mypalette <- brewer.pal(9, "Greens")
 
-radial_SVM.3 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = "automatic",
-  C = 2, epsilon = 0.3)
-model_preds.3 <- predict(radial_SVM.3, newdata = data_grid)
-# nearly perfect, increased cost and epsilon vs. others...
-points(x = data_grid$x, y = model_preds.3[,1], type = "l", col = "green")
-
-radial_SVM.4 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = "automatic",
-  C = 10, epsilon = 0.01)  # high cost, low e
-model_preds.4 <- predict(radial_SVM.4, newdata = data_grid)
-# with very high cost starts to be influenced by outliers
-points(x = data_grid$x, y = model_preds.4[,1], type = "l", col = "orange")
-
-radial_SVM.5 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = "automatic",
-  C = 1, epsilon = 0.05)  # high cost, low e
-model_preds.5 <- predict(radial_SVM.5, newdata = data_grid)
-# matches the green almost exactly
-points(x = data_grid$x, y = model_preds.5[,1], type = "l", col = "purple")
-
-# real function
-points(sort(x), sin(sort(x)), type = "l")
-
-# Changing sigma ------------------------------------------------------------
+par(mar=c(5.1, 4.1, 4.1, 8.1), xpd=TRUE)
 plot(x, y)
+for (i in 1:9) {
+  radial_SVM <- ksvm(x = x, y = y, data = sin_data,
+    kernel ="rbfdot", kpar = "automatic",
+    C = i/2, epsilon = 0.1)  # move the cost from 0.5 to 4.5
+  model_preds <- predict(radial_SVM, newdata = data_grid)
+  points(x = data_grid$x, y = model_preds[,1], type = "l", col = mypalette[i])
+}
+legend("topright", inset=c(-0.2,0), lty = 1, legend=c(seq(0.5, 4.5, by = 0.5)), 
+  col = mypalette[1:10], title="Cost", cex = 0.5)
+par(xpd = FALSE)
+points(seq(1, 11, by = 0.1), sin(seq(1, 11, by = 0.1)), type = "l", lwd = 2)
 
-radial_SVM.1 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = list(sigma = 1),
-  C = 2, epsilon = 0.1)  # high cost, low e
-model_preds.1 <- predict(radial_SVM.1, newdata = data_grid)
-points(x = data_grid$x, y = model_preds.1[,1], type = "l", col = "purple")
+# Fit different models using a radial basis function and different values of ===
+# the epsilon boundary parameter
 
-radial_SVM.2 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = list(sigma = 3),
-  C = 2, epsilon = 0.1)  # high cost, low e
-model_preds.2 <- predict(radial_SVM.2, newdata = data_grid)
-points(x = data_grid$x, y = model_preds.2[,1], type = "l", col = "green")
+mypalette <- brewer.pal(9, "Blues")
 
-radial_SVM.3 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = list(sigma = 5),
-  C = 2, epsilon = 0.1)  # high cost, low e
-model_preds.3 <- predict(radial_SVM.3, newdata = data_grid)
-points(x = data_grid$x, y = model_preds.3[,1], type = "l", col = "orange")
+par(mar=c(5.1, 4.1, 4.1, 8.1), xpd=TRUE)
+plot(x, y, bty='L')
+for (i in 1:9) {
+  radial_SVM <- ksvm(x = x, y = y, data = sin_data,
+    kernel ="rbfdot", kpar = "automatic",
+    C = 1, epsilon = i/10) # move epsilon from 0.1 to 0.9
+  model_preds <- predict(radial_SVM, newdata = data_grid)
+  points(x = data_grid$x, y = model_preds[,1], type = "l", 
+    col = mypalette[i], 
+    lwd = 2)
+}
+legend("topright", inset=c(-0.2,0), lty = 1, legend=c(seq(0.1, 0.9, by = 0.1)), 
+  col = mypalette[1:10], title="Epsilon", cex = 0.5)
+par(xpd = FALSE)
+points(seq(1, 11, by = 0.1), sin(seq(1, 11, by = 0.1)), type = "l", lwd = 1)
 
-radial_SVM.4 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = list(sigma = 7),
-  C = 2, epsilon = 0.1)  # high cost, low e
-model_preds.4 <- predict(radial_SVM.4, newdata = data_grid)
-points(x = data_grid$x, y = model_preds.4[,1], type = "l", col = "blue")
+# Fit different models using a radial basis function and different values of ===
+# sigma (the scaling parameter)
 
-radial_SVM.5 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = list(sigma = 0.1),
-  C = 2, epsilon = 0.1)  # high cost, low e
-model_preds.5 <- predict(radial_SVM.5, newdata = data_grid)
-points(x = data_grid$x, y = model_preds.5[,1], type = "l", col = "red")
+mypalette <- brewer.pal(9, "Reds")
 
-radial_SVM.6 <- ksvm(x = x, y = y, data = sin_data,
-  kernel ="rbfdot", kpar = list(sigma = 0),
-  C = 2, epsilon = 0.1)  # high cost, low e
-model_preds.6 <- predict(radial_SVM.6, newdata = data_grid)
-points(x = data_grid$x, y = model_preds.6[,1], type = "l", col = "yellow")
+par(mar=c(5.1, 4.1, 4.1, 8.1), xpd=TRUE)
+plot(x, y)
+for (i in 1:9) {
+  radial_SVM <- ksvm(x = x, y = y, data = sin_data,
+    kernel ="rbfdot", kpar = list(sigma = i), # move epsilon from 1 to 9
+    C = 1, epsilon = 0.1) 
+  model_preds <- predict(radial_SVM, newdata = data_grid)
+  points(x = data_grid$x, y = model_preds[,1], type = "l", 
+    col = mypalette[i], 
+    lwd = 2)
+}
+legend("topright", inset=c(-0.2,0), lty = 1, legend=c(seq(1, 9, by = 1)), 
+  col = mypalette[1:10], title="Sigma", cex = 0.5)
+par(xpd = FALSE)
+points(seq(1, 11, by = 0.1), sin(seq(1, 11, by = 0.1)), type = "l", lwd = 1)
 
-points(x = data_grid$x, y = rep(mean(y), length(x)), type = "l")
 
 # sigma determines the extent smoothing, if zero left only with beta_0...
 # Cost determines error impact on model, e determines number of support vectors
