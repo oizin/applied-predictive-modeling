@@ -7,6 +7,7 @@
 # Packages ====================================================================
 library(mlbench)
 library(caret)
+library(reshape2)
 
 # Simulate the data ===========================================================
 set.seed(200)
@@ -85,18 +86,21 @@ plot(x = mars_pred, y = test$y, xlab = 'prediction', ylab = 'observed',
 abline(a = 0, b = 1, lty = 2, col = 2)
 
 # Fit and test a Neural Networks model =========================================
-nnet_grid <- expand.grid(.decay = seq(0.5, 1.5, by = 0.1), 
-  .size = seq(1, 15, by = 2), .bag = FALSE)
+cor(training$x)
+
+nnet_grid <- expand.grid(.decay = seq(0.5, 1.5, by = 0.1), # book recommends decay is 
+  .size = seq(1, 15, by = 2), .bag = FALSE)                # between 0 and 0.1
 set.seed(100)
 nnet_model <- train(x = training$x,
   y = training$y,
-  method = "avNNet",
+  method = "avNNet",  # avNNet performs model averaging
   preProc = c("center", "scale"),
   trControl = ctrl,
   tuneGrid = nnet_grid,
   linout = TRUE,
   maxit = 500)
 nnet_model
+nnet_model$finalModel  # there are 5 final models
 
 nnet_pred <- predict(nnet_model, test$x)
 postResample(pred = nnet_pred, obs = test$y)
@@ -106,3 +110,11 @@ postResample(pred = nnet_pred, obs = test$y)
 plot(x = nnet_pred, y = test$y, xlab = 'prediction', ylab = 'observed',
   main = 'Neural Networks model')
 abline(a = 0, b = 1, lty = 2, col = 2)
+
+nnet_pred_dist <- data.frame(training_data = training$y, predictions = nnet_pred,
+  population_data = test$y)
+nnet_pred_dist <- melt(nnet_pred_dist); str(nnet_pred_dist)
+ggplot(data = nnet_pred_dist, aes(value, ..density.., colour = variable)) + 
+  geom_density() +
+  theme_
+

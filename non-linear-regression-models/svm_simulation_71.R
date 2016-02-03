@@ -1,7 +1,7 @@
 # Chapter 7: Non-linear Regression models
 #
 # Script based on Ex 7.1 of Applied Predictive Modeling (Kuhn & Johnson, 2013)
-# Exercise covers on data simulation, train/test splitting, the SVM tuning parameters
+# Exercise covers on data simulation and the SVM tuning parameters
 #
 ## SVM Notes:
 # Can be seen as a form of robust regression.
